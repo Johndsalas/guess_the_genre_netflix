@@ -13,7 +13,6 @@ Movie genres have always been somewhat loosely understood and many genres have a
 * Create wrangle module and use it to import the data into my notebook
 
 ### Prepare
-Add code to my wrangle file to prepare the data for exploration
 * Drop all columns other than 'description' and 'genre'
 * Prepare text in 'description' for exploration
   * Convert all letters in the text to lower case
@@ -22,3 +21,4 @@ Add code to my wrangle file to prepare the data for exploration
   * Lemmatize the words in the text
   * Remove stopwords
 
+### Explore
