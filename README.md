@@ -1,4 +1,4 @@
-# Guess the Genre
+# Guess the Netflix Genre
 
 ## Project Goal: 
 Review the basics of Natural Language Processing by creating a machine learning model that can predict the genre on a Netflix movie based upon it's description.
@@ -61,4 +61,10 @@ Movie genres have always been somewhat loosely understood and many genres have a
   * Give a brief explination of how the model uses the data to make predictions
   * End with recommendations, next steps, and final thoughts
 
+# Data Dictionary
+
+| Feature | Definition |
+|:--------|:-----------|
+|Genre|The catagory of the movie as assigned by Netflix (With some modifications, See prepare steps)|
+|Description| Text describing what the movie is about|
 
