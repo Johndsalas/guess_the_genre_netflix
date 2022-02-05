@@ -23,11 +23,11 @@ Movie genres have always been somewhat loosely understood and many genres have a
 
 ### Explore
 * Answer Exploration Questions
- * What are the top 20 most frequently occuring words?
- * Are there any words that occur in only one genre?
- * Are there any words that occur much more frequently in one genre than in others?
- * What are the top 20 most frequently occuring bigrams?
- * Are there any bigrams that occur in only one genre?
- * Are there any bigrams that occur much more frequently in one genre than in others?
+  * What are the top 20 most frequently occuring words?
+  * Are there any words that occur in only one genre?
+  * Are there any words that occur much more frequently in one genre than in others?
+  * What are the top 20 most frequently occuring bigrams?
+  * Are there any bigrams that occur in only one genre?
+  * Are there any bigrams that occur much more frequently in one genre than in others?
 
 ### Modeling
