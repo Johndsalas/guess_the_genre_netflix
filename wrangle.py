@@ -1,8 +1,9 @@
 
+import os
 
 import pandas as pd
-import re
 
+import re
 import unicodedata
 import nltk
 from nltk.tokenize.toktok import ToktokTokenizer
@@ -75,13 +76,20 @@ def remove_cinima_type(value):
     '''Take in genre text from a pandas column
        Remove text indicating standalone movie or series
        return remainder of the text'''
-     
-    value = value.replace(' tv','') 
-    value = value.replace('tv ','')
-    value = value.replace(' shows','')
-    value = value.replace(' movies','')
-    value = value.replace(' series','')
-    value = value.replace(' features','')
+    
+    cinima_type_list = [' tv',
+                        'tv ',
+                        ' shows',
+                        ' movies',
+                        ' series',
+                        ' features',
+                        'movies', 
+                        'shows',
+                        'anime series']
+
+    for cinima_type in cinima_type_list:
+
+        value = value.replace(cinima_type,'')
     
     value = [genre.strip() for genre in value.split(',')]
     
@@ -99,17 +107,14 @@ def get_genre_list(value):
                 'anime', 
                 'classic & cult', 
                 "kids'", 
-                'cult', 
-                'movies', 
-                'shows',
+                'cult',      
                 'spanish-language', 
                 'british', 
                 'children & family', 
-                'anime series',
-                'lgbtq',
                 'classic', 
                 'international',
                 'independent',
+                'lgbtq',
                 'sci-fi & fantasy',
                 'sports',
                 'faith & spirituality',
@@ -141,17 +146,84 @@ def merge_genres(value, merge_list, replacement):
         
         return value
 
+def fuse_genre(value, fuse_list, replacement):
+    
+    # builds list of genres from value matching fuse_list
+    check_list = [genre for genre in value if genre in fuse_list]
+
+    # if the length of check_list is equal to the length of value return replacement 
+    if (len(check_list) == len(value)) and (len(value) == 2):
+        
+        return [replacement]
+    
+    # otherwise return original list
+    else:
+        
+        return value
+
+def remove_genre(value, genre, val_len):
+    '''takes in a list of genres as a pandas value a genre name and a length
+       removes the genre from all lists that are equal to or longer than the input length'''
+
+    if (len(value) >= val_len) and (genre in value):
+        
+        value.remove(genre)
+        
+    return value
+
 def prepair_genres(df):
 
     # remove text indicating standalone movie or series
     df['genre'] = df['genre'].apply(lambda value: remove_cinima_type(value))
 
-    # get new column with string of genres in each row made into a curated list of those genras 
+    # get new column converting the string of genres in each into a curated list of those genras 
     df['genre_list'] = df['genre'].apply(lambda value: get_genre_list(value))
 
-    # merge all films in 'documenty' genre into one catagory named documentaries
-    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value,['docuseries', 'documentary', 'documentaries'],'documentaries'))
+    # drop row containing an empty list in genre_list
+    df = df[df['genre_list'].map(lambda d: len(d)) > 0]
 
+    # merge all films with any genre in merge list into one genre
+
+    merge_list = ['docuseries', 'documentary', 'documentaries']
+    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value, merge_list ,'documentaries'))
+
+    merge_list = ['reality']
+    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value, merge_list,'reality'))
+
+    merge_list = ['music & musicals']
+    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value, merge_list,'music & musicals'))
+
+    merge_list = ['crime']    
+    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value, merge_list,'crime'))
+
+    merge_list = ['horror']
+    df['genre_list'] = df['genre_list'].apply(lambda value: merge_genres(value,merge_list,'horror'))
+
+    # remove drama from films with three or more genres
+    df['genre_list'] = df['genre_list'].apply(lambda value: remove_genre(value,'dramas', 3))
+
+    # fuse films that contain only genres in fuse list into a new genre
+    
+    fuse_list = ['romantic', 'comedies']
+    df['genre_list'] = df['genre_list'].apply(lambda value: fuse_genre(value, fuse_list, 'romantic comedies'))
+
+    fuse_list = ['dramas', 'comedies']
+    df['genre_list'] = df['genre_list'].apply(lambda value: fuse_genre(value, fuse_list, 'dramatic comedies'))
+
+    fuse_list = ['action & adventure', 'comedies']
+    df['genre_list'] = df['genre_list'].apply(lambda value: fuse_genre(value, fuse_list, 'action & adventure comedies'))
+
+    # remove drama from films with three or more genres
+    df['genre_list'] = df['genre_list'].apply(lambda value: remove_genre(value,'dramas', 2))
+
+    # remove remaining films with more than one genre
+    df = df[df['genre_list'].map(lambda d: len(d)) == 1]
+
+    # conver genre to unpacked genre from genre_list
+    df['genre'] = df.genre_list.apply(lambda value: value[0])
+
+    # drop genre list
+    df = df.drop(columns = 'genre_list')
 
     return df
 
@@ -175,12 +247,14 @@ def prep_movie_data(df):
 
     return df
 
-# def get_my_data():
+def get_my_movie_data():
 
-#     df = get_movie_data()
+    if os.path.exists("movies_preped.csv") == False:
 
-#     df = prep_movie_data(df)
+        df = get_movie_data()
 
-#     return df.head()
+        df = prep_movie_data(df)
 
-# get_my_data()
+        df.to_csv("movies_preped.csv", index=False)
+
+    return pd.read_csv("movies_preped.csv")
