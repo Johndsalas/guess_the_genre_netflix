@@ -1,4 +1,3 @@
-
 import os
 
 import pandas as pd
@@ -9,49 +8,50 @@ import nltk
 from nltk.tokenize.toktok import ToktokTokenizer
 from nltk.corpus import stopwords
 
-def get_movie_data():
-    '''reads data from csv into pandas'''
+###################################### main wrangle function #################################################### 
 
-    return pd.read_csv('netflixdata.csv')
+def get_my_movie_data():
+    ''' Acquires and preps and writes film data to csv if csv is not present
+        Then returns a pandas dataframe of the date in the csv'''
+   
+   # if the preped data does not exist wrangle the data and write it to a csv
+    if os.path.exists("movies_preped.csv") == False:
 
+        df = pd.read_csv('netflixdata.csv')
 
-def lemmatizer(value):
-    '''Takes in a value from a pandas column and returns the value lemmatized'''
-    
-    # create lemmatizer object
-    wnl = nltk.stem.WordNetLemmatizer()
-    
-    # get list of lemmatized words in value
-    value_lemmas = [wnl.lemmatize(word) for word in value.split()]
-    
-    # turn list or words back into a string and return value
-    return ' '.join(value_lemmas)
+        df = prep_movie_data(df)
 
-def tokenizer(df):
-    '''Takes in a value from a pandas column and returns the value tokenized'''
+        df.to_csv("movies_preped.csv", index=False)
 
-    # create tokenizer object
-    tokenizer = nltk.tokenize.ToktokTokenizer()
+    return pd.read_csv("movies_preped.csv")
 
-    # tokenize text in description
-    df['description'] = df['description'].apply(lambda value: tokenizer.tokenize(value, return_str=True))
+##################################### main prepare function ######################################################
+
+def prep_movie_data(df):
+    ''' Prepare film data using helper functions'''
+
+    # drop columns not related to this project
+    df = df[['Description','Genres']]
+
+    # Lowercase all of the letters in both columns
+    df['Description'] = df['Description'].apply(lambda value: value.lower())
+    df['Genres'] = df['Genres'].apply(lambda value: value.lower())
+
+    # rename columns
+    df = df.rename(columns={'Description':'description', 'Genres':'genre'})
+
+    # prepare text in description for exploration
+    df = prep_description(df)
+
+    # modify values in genre untill there is only one genre in each value 
+    df = prepair_genres(df)
 
     return df
 
-def remove_stopwords(value):
-    
-    # get list english language stopwords list from nlt
-    stopword_list = stopwords.words('english')
-    
-    # split words in pandas value into a list and remove words from the list that are in stopwords
-    value_words = value.split()
-    filtered_list = [word for word in value_words if word not in stopword_list]
-    
-    # convert list back into string and return value
-    return ' '.join(filtered_list)
+##################################### prepare helper functions ######################################################
 
-
-def prep_description_text(df):
+def prep_description(df):
+    ''' Prepare film description text for exploration'''
 
     # remove non-ascii characters from description text 
     df['description'] = df['description'].apply(lambda value: unicodedata.normalize('NFKD', value)\
@@ -72,106 +72,9 @@ def prep_description_text(df):
 
     return df
 
-def remove_cinima_type(value):
-    '''Take in genre text from a pandas column
-       Remove text indicating standalone movie or series
-       return remainder of the text'''
-    
-    cinima_type_list = [' tv',
-                        'tv ',
-                        ' shows',
-                        ' movies',
-                        ' series',
-                        ' features',
-                        'movies', 
-                        'shows',
-                        'anime series']
-
-    for cinima_type in cinima_type_list:
-
-        value = value.replace(cinima_type,'')
-    
-    value = [genre.strip() for genre in value.split(',')]
-    
-    return ','.join(value)
-
-def get_genre_list(value):
-    '''takes in string list of genes from a pandas column
-       creates a python list of those genres 
-       removes genres in the cut list 
-       returns created list'''
-    
-    cut_list = ['international', 
-                'teen', 
-                'korean', 
-                'anime', 
-                'classic & cult', 
-                "kids'", 
-                'cult',      
-                'spanish-language', 
-                'british', 
-                'children & family', 
-                'classic', 
-                'international',
-                'independent',
-                'lgbtq',
-                'sci-fi & fantasy',
-                'sports',
-                'faith & spirituality',
-                'stand-up comedy & talk',
-                'mysteries']
-    
-    genre_list = value.split(',')
-    genre_list = [genre.strip() for genre in genre_list]
-    
-    return [genre for genre in genre_list if genre not in cut_list]
-
-def merge_genres(value, merge_list, replacement):
-    '''Take in a pandas value that is a list of genres
-       a merge list and a replacement string
-       If one of the genres in genre_list is in merge_list 
-       return a list containing the replacement string
-       otherwise return original list'''
-
-    # builds list of genres from value matching merge_list
-    check_list = [genre for genre in value if genre in merge_list]
-
-    # if check_list is not empty return list with just documentary
-    if len(check_list) > 0:
-        
-        return [replacement]
-    
-    # otherwise return original list
-    else:
-        
-        return value
-
-def fuse_genre(value, fuse_list, replacement):
-    
-    # builds list of genres from value matching fuse_list
-    check_list = [genre for genre in value if genre in fuse_list]
-
-    # if the length of check_list is equal to the length of value return replacement 
-    if (len(check_list) == len(value)) and (len(value) == 2):
-        
-        return [replacement]
-    
-    # otherwise return original list
-    else:
-        
-        return value
-
-def remove_genre(value, genre, val_len):
-    '''takes in a list of genres as a pandas value a genre name and a length
-       removes the genre from all lists that are equal to or longer than the input length'''
-
-    if (len(value) >= val_len) and (genre in value):
-        
-        value.remove(genre)
-        
-    return value
 
 def prepair_genres(df):
+    '''Prepares genres in film data by ensuring that each film has only one genre'''
 
     # remove text indicating standalone movie or series
     df['genre'] = df['genre'].apply(lambda value: remove_cinima_type(value))
@@ -227,34 +130,152 @@ def prepair_genres(df):
 
     return df
 
-def prep_movie_data(df):
+##################################### prepare describe helper functions ######################################################
 
-    # drop columns not related to this project
-    df = df[['Description','Genres']]
+def lemmatizer(value):
+    '''Takes in a value from a pandas column and returns the value lemmatized'''
+    
+    # create lemmatizer object
+    wnl = nltk.stem.WordNetLemmatizer()
+    
+    # get list of lemmatized words in value
+    value_lemmas = [wnl.lemmatize(word) for word in value.split()]
+    
+    # turn list or words back into a string and return value
+    return ' '.join(value_lemmas)
 
-    # Lowercase all of the letters in both columns
-    df['Description'] = df['Description'].apply(lambda value: value.lower())
-    df['Genres'] = df['Genres'].apply(lambda value: value.lower())
+def tokenizer(df):
+    '''Takes in a value from a pandas column and returns the value tokenized'''
 
-    # rename columns
-    df = df.rename(columns={'Description':'description', 'Genres':'genre'})
+    # create tokenizer object
+    tokenizer = nltk.tokenize.ToktokTokenizer()
 
-    # prepare text in description for exploration
-    df = prep_description_text(df)
-
-    # modify values in genre untill there is only one genre in each value 
-    df = prepair_genres(df)
+    # tokenize text in description
+    df['description'] = df['description'].apply(lambda value: tokenizer.tokenize(value, return_str=True))
 
     return df
 
-def get_my_movie_data():
+def remove_stopwords(value):
+    ''' remove stopwords from text'''
 
-    if os.path.exists("movies_preped.csv") == False:
+    # get list english language stopwords list from nlt
+    stopword_list = stopwords.words('english')
+    
+    # split words in pandas value into a list and remove words from the list that are in stopwords
+    value_words = value.split()
+    filtered_list = [word for word in value_words if word not in stopword_list]
+    
+    # convert list back into string and return value
+    return ' '.join(filtered_list)
 
-        df = get_movie_data()
+##################################### prepare genre functions ######################################################
 
-        df = prep_movie_data(df)
+def remove_cinima_type(value):
+    '''Take in genre text as a value from a pandas column
+       Remove text indicating standalone movie or series
+       return remainder of the text'''
+    
+    # list of text to be removed
+    cinima_type_list = [' tv',
+                        'tv ',
+                        ' shows',
+                        ' movies',
+                        ' series',
+                        ' features',
+                        'movies', 
+                        'shows',
+                        'anime series']
 
-        df.to_csv("movies_preped.csv", index=False)
+    # itterate through items in cinima_type_list and remove those items from the text in value
+    for cinima_type in cinima_type_list:
 
-    return pd.read_csv("movies_preped.csv")
+        value = value.replace(cinima_type,'')
+    
+    # eliminate spaces between words in value
+    value = [genre.strip() for genre in value.split(',')]
+    
+    return ','.join(value)
+
+def get_genre_list(value):
+    '''takes in string of genes as a value from a pandas column
+       creates a curated list of geres and returns that list'''
+    
+    # list of genres to exclude
+    cut_list = ['international', 
+                'teen', 
+                'korean', 
+                'anime', 
+                'classic & cult', 
+                "kids'", 
+                'cult',      
+                'spanish-language', 
+                'british', 
+                'children & family', 
+                'classic', 
+                'international',
+                'independent',
+                'lgbtq',
+                'sci-fi & fantasy',
+                'sports',
+                'faith & spirituality',
+                'stand-up comedy & talk',
+                'mysteries']
+    
+    # create list of genres from pandas value
+    genre_list = value.split(',')
+
+    # return list of genres in genre_list that are not in cut list and eliminate leading trailing whitespace for each item
+    return [genre.strip() for genre in genre_list if genre not in cut_list]
+
+def merge_genres(value, merge_list, replacement):
+    '''Takes in a pandas value that is a list of genres
+       a merge list and a replacement string
+       If one of the genres in genre_list is in merge_list 
+       return a list containing the replacement string
+       otherwise return original list'''
+
+    # builds list of genres from value matching merge_list
+    check_list = [genre for genre in value if genre in merge_list]
+
+    # if check_list is not empty return list with just documentary
+    if len(check_list) > 0:
+        
+        return [replacement]
+    
+    # otherwise return original list
+    else:
+        
+        return value
+
+def fuse_genre(value, fuse_list, replacement):
+    '''takes in a list of genres as a pandas value
+     a fuse list and a replacement string
+     if the pandas value and fuse list are the same
+     return the replacement string otherwise
+     return the pandas value'''
+
+    # get list of genres that are in value and fuse_list
+    check_list = [genre for genre in value if genre in fuse_list]
+
+    # if the length of value is 2 and the length of check list is 2 or greater 
+    if (len(value) == 2)  and (len(check_list)) >= 2:
+        
+        # return the replacemnet value in a list
+        return [replacement]
+    
+    # otherwise return original list
+    else:
+        
+        return value
+
+def remove_genre(value, genre, val_len):
+    '''takes in a list of genres as a pandas value the name of a genre and a value length
+       removes the genre from all lists that are equal to or longer than the input length'''
+
+    # if the length of value is greater than or equal to val_len and genre is in value 
+    if (len(value) >= val_len) and (genre in value):
+        
+        # remove genre from value 
+        value.remove(genre)
+        
+    return value
