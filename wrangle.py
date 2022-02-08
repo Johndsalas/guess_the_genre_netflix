@@ -8,6 +8,8 @@ import nltk
 from nltk.tokenize.toktok import ToktokTokenizer
 from nltk.corpus import stopwords
 
+from sklearn.model_selection import train_test_split
+
 ###################################### main wrangle function #################################################### 
 
 def get_my_movie_data():
@@ -22,7 +24,7 @@ def get_my_movie_data():
         df = prep_movie_data(df)
 
         df.to_csv("movies_preped.csv", index=False)
-
+    
     return pd.read_csv("movies_preped.csv")
 
 ##################################### main prepare function ######################################################
@@ -48,7 +50,7 @@ def prep_movie_data(df):
 
     return df
 
-##################################### prepare helper functions ######################################################
+##################################### prep_movie_data helper functions ######################################################
 
 def prep_description(df):
     ''' Prepare film description text for exploration'''
@@ -67,7 +69,7 @@ def prep_description(df):
     # lemmatize the text in description
     df['description'] = df['description'].apply(lambda value: lemmatizer(value))
 
-    # remove stopwords from text in description
+    # remove stopwords from text in description and return a list of words in the text
     df['description'] = df['description'].apply(lambda value: remove_stopwords(value))
 
     return df
@@ -82,7 +84,7 @@ def prepair_genres(df):
     # get new column converting the string of genres in each into a curated list of those genras 
     df['genre_list'] = df['genre'].apply(lambda value: get_genre_list(value))
 
-    # drop row containing an empty list in genre_list
+    # drop rows containing an empty list in genre_list
     df = df[df['genre_list'].map(lambda d: len(d)) > 0]
 
     # merge all films with any genre in merge list into one genre
@@ -125,12 +127,15 @@ def prepair_genres(df):
     # conver genre to unpacked genre from genre_list
     df['genre'] = df.genre_list.apply(lambda value: value[0])
 
+    # drop rows with NaN values resulting from unpacking a list holding an empty string
+    df = df[df.genre != '']
+
     # drop genre list
     df = df.drop(columns = 'genre_list')
 
     return df
 
-##################################### prepare describe helper functions ######################################################
+##################################### prep_description helper functions ######################################################
 
 def lemmatizer(value):
     '''Takes in a value from a pandas column and returns the value lemmatized'''
@@ -168,7 +173,7 @@ def remove_stopwords(value):
     # convert list back into string and return value
     return ' '.join(filtered_list)
 
-##################################### prepare genre functions ######################################################
+##################################### prepair_genres helper functions ######################################################
 
 def remove_cinima_type(value):
     '''Take in genre text as a value from a pandas column
@@ -279,3 +284,14 @@ def remove_genre(value, genre, val_len):
         value.remove(genre)
         
     return value
+
+################################################Data Splitting##################################################################
+
+def split_my_data(df):
+    '''Splits data into train, validate, and test data'''
+
+    train_validate, test = train_test_split(df, test_size=.2, random_state=123, stratify=df.genre)
+
+    train, validate =  train_test_split(train_validate, test_size=.3, random_state=123, stratify=train_validate.genre)
+
+    return train, validate, test
